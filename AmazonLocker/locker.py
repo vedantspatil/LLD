@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 
 class Size(Enum):
     SMALL = 1
@@ -16,11 +17,11 @@ class User(ABC):
 
 class DeliveryUser(User):
     def __init__(self, id, name, code):
-        super().__init__(self, id, name, code)
+        super().__init__(id, name, code)
 
 class EndUser(User):
     def __init__(self, id, name, code):
-        super().__init__(self, id, name, code)
+        super().__init__(id, name, code)
     
 
 class Package(ABC):
@@ -31,15 +32,15 @@ class Package(ABC):
 
 class LargePackage(Package):
     def __init__(self, id, user):
-        super().__init__(id, PackageSize.Large, user)
+        super().__init__(id, Size.LARGE, user)
     
-class MediumPackage(Package):s
+class MediumPackage(Package):
     def __init__(self, id, user):
-        super().__init__(id, PackageSize.Medium, user)
+        super().__init__(id, Size.MEDIUM, user)
         
 class SmallPackage(Package):
     def __init__(self, id, user):
-        super().__init__(id, PackageSize.Small, user)
+        super().__init__(id, Size.SMALL, user)
 
 
 class Locker(ABC):
@@ -47,19 +48,19 @@ class Locker(ABC):
         self.id = id
         self.code = None
         self.size = size
-        self.isAvailable=True
+        self.isAvailable = True
         self.package = None
     
     def assignPackage(self, package):
         if self.isAvailable:
             self.isAvailable = False
             self.package = package
-            self._assingCode(self.package.user.code)
+            self._assignCode(self.package.user.code)
     
     def emptyLocker(self):
         self.isAvailable = True
         self.package = None
-        self._assignCode = None
+        self._assignCode(None)
     
     def validateCode(self, code):
         return code == self.code
@@ -79,27 +80,26 @@ class SmallLocker(Locker):
         super().__init__(id, Size.SMALL)
 
     def canFit(self, package):
-        return package.size in [Size.SMALL]
+        return package.size == Size.SMALL
 
 class MediumLocker(Locker):
     def __init__(self, id):
-        super().__init__(id Size.MEDIUM)
+        super().__init__(id, Size.MEDIUM)
 
     def canFit(self, package):
-        return package.size in [Size.SMALL, Size.MEDIUM]
+        return package.size in [Size.MEDIUM, Size.SMALL]
 
 class LargeLocker(Locker):
     def __init__(self, id):
-        super().__init__(id, Size.SMALL)
+        super().__init__(id, Size.LARGE)
 
     def canFit(self, package):
-        return package.size in [Size.LARGE, Size.SMALL, Size.MEDIUM]
+        return package.size == Size.LARGE
 
 
 class LockerSystem:
     def __init__(self):
         self.lockers = []
-        self.deliveryAgents = {}
         self.userPackages = {}
         self.packageLocation = {}
 
@@ -107,37 +107,35 @@ class LockerSystem:
         self.lockers.append(locker)
     
     def _findLocker(self, package):
+        currLocker = None
         for locker in self.lockers:
             if locker.isAvailable and locker.canFit(package):
-                return locker
-        return None
+                if not currLocker or locker.size <= currLocker.size:
+                    currLocker = locker
+        return currLocker
 
     def assignLocker(self, user, package):
-        if type(user) == DeliveryUser and user.id in self.deliveryAgents:
-            deliverAgent = self.deliveryAgents[user.id]
-            if deliveryAgent.validateCode(user.code):
-                locker = self._findLocker(package)
-                if locker:
-                    locker.assignPackage(package)
-                    self.packageLocation[package.id] = locker
-                    self.userPackages[package.user.id] = package
-                    return "Package Assigned to Locker"
-                else:
-                    return "No Locker Found for the Package"
+        if isinstance(user, DeliveryUser):
+            locker = self._findLocker(package)
+            if locker:
+                locker.assignPackage(package)
+                self.packageLocation[package.id] = locker
+                self.userPackages[package.user.id] = package
+                return "Package Assigned to Locker {0}".format(locker.id)
             else:
-                return "Invalid Deliver Code"
+                return "No Locker Found for the Package"
         return "Only valid Delivery Agents can deliver packages"
 
 
     def pickUpPackage(self, user):
-        if type(user) == EndUser and user.id in self.userPackages:
+        if isinstance(user, EndUser) and user.id in self.userPackages:
             package = self.userPackages[user.id]
             locker = self.packageLocation[package.id]
             if locker.validateCode(user.code):
                 locker.open()
                 del self.userPackages[user.id]
                 del self.packageLocation[package.id]
-            return "Invalid Code"
+                return "Package Picked Up"
+            else:
+                return "Invalid Code"
         return "No Package for User"
-
-
