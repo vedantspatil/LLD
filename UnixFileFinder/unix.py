@@ -6,14 +6,18 @@ class FileNode:
         self.name = name
         self.isDirectory = isDirectory
         self.parentPath = ""
-        self.path = self.parentPath+"/"+self.name+""
-
-    def setFilePath(self,path):
+        self.filePath = "{0}/{1}".format(self.parentPath,self.name)
+    
+    def updateParentPath(self, path):
         self.parentPath = path
-        self.path = self.parentPath+"/"+self.name+""
-    def getFilePath(self):
-        return self.path
+        self.updatePath()
+    
+    def updatePath(self):
+        self.filePath = "{0}/{1}".format(self.parentPath,self.name)
 
+    def getPath(self):
+        return self.filePath
+    
 class Directory(FileNode):
     def __init__(self, name):
         super().__init__(name, True, 0)
@@ -91,7 +95,7 @@ class Search:
         while queue:
             currNode = queue.popleft()
             if all(constraint.isSatisfied(currNode) for constraint in constraints):
-                matches.append((currNode.path, currNode.name, currNode.size))
+                matches.append((currNode.filePath, currNode.size))
             if currNode.isDirectory:
                 queue.extend(currNode.children)
         return matches
@@ -116,4 +120,4 @@ if __name__ == "__main__":
     c2 = SizeConstraint(0, 500)
     c3 = ExtensionConstraint("mp4")
     c4 = OrConstraint(c2, c3)
-    print(searchApi.search(rootDirectory, c1))
+    print(searchApi.search(rootDirectory, c4))
