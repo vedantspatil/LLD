@@ -1,21 +1,23 @@
 from abc import ABC, abstractmethod
 from collections import deque
 
-class File:
-    def __init__(self, name, isDirectory,  parentPath="", size=0):
+class FileNode:
+    def __init__(self, name, isDirectory, size=0):
         self.name = name
-        self.size = size
         self.isDirectory = isDirectory
-        self.children = []
-        self.parentPath = parentPath
-        self.filePath = self.parentPath+"/"+self.name+""
-    
+        self.parentPath = ""
+        self.path = self.parentPath+"/"+self.name+""
+
     def setFilePath(self,path):
         self.parentPath = path
-        self.filePath = self.parentPath+"/"+self.name+""
-    
+        self.path = self.parentPath+"/"+self.name+""
     def getFilePath(self):
-        return self.filePath
+        return self.path
+
+class Directory(FileNode):
+    def __init__(self, name):
+        super().__init__(name, True, 0)
+        self.children = []
 
     def addSubDirectory(self, *subdirectories):
         self.children.extend(subdirectories)
@@ -23,8 +25,14 @@ class File:
 
     def updatePaths(self):
         for dir in self.children:
-            dir.setFilePath(self.filePath)
-            dir.updatePaths()
+            dir.setFilePath(self.path)
+            if dir.isDirectory:
+                dir.updatePaths()
+
+class File(FileNode):
+    def __init__(self, name, size=0):
+        super().__init__(name, False, size)
+        self.size = size
     
 class Constraints(ABC):
     @abstractmethod
@@ -36,7 +44,7 @@ class NameConstraint(Constraints):
         self.name = name
     
     def isSatisfied(self, file: File) -> bool:
-        return self.name == file.name
+        return self.name == file.name and not file.isDirectory
 
 
 class SizeConstraint(Constraints):
@@ -45,7 +53,7 @@ class SizeConstraint(Constraints):
         self.minSize = minSize
     
     def isSatisfied(self, file: File) -> bool:
-        return self.minSize<=file.size<=self.maxSize
+        return not file.isDirectory and self.minSize<=file.size<=self.maxSize
 
 
 class ExtensionConstraint(Constraints):
@@ -53,7 +61,7 @@ class ExtensionConstraint(Constraints):
         self.extension = extension
     
     def isSatisfied(self, file: File) -> bool:
-        return file.name.endswith(self.extension)
+        return file.name.endswith(self.extension) and not file.isDirectory
 
 
 class AndConstraint(Constraints):
@@ -82,22 +90,20 @@ class Search:
         matches = []
         while queue:
             currNode = queue.popleft()
-            # print(currNode.name)
-
-            if all(constraint.isSatisfied(currNode) for constraint in constraints) and not currNode.isDirectory:
-                matches.append((currNode.parentPath, currNode.name, currNode.size))
+            if all(constraint.isSatisfied(currNode) for constraint in constraints):
+                matches.append((currNode.path, currNode.name, currNode.size))
             if currNode.isDirectory:
                 queue.extend(currNode.children)
         return matches
 
 if __name__ == "__main__": 
-    rootDirectory = File("root", True)
-    file1 = File("file1.txt", False,"", 500)
-    file2 = File("file2.mp4", False,"", 200)
-    file3 = File("file3.json", False,"", 300)
-    dir1 = File("dir1", True)
-    dir2 = File("dir2", True)
-    dir3 = File("dir3", True)
+    rootDirectory = Directory("root")
+    file1 = File("file1.txt", 500)
+    file2 = File("file2.mp4", 200)
+    file3 = File("file3.json", 300)
+    dir1 = Directory("dir1")
+    dir2 = Directory("dir2")
+    dir3 = Directory("dir3")
     rootDirectory.addSubDirectory(file1)
     dir2.addSubDirectory(file2)
     dir3.addSubDirectory(file3)
@@ -110,4 +116,4 @@ if __name__ == "__main__":
     c2 = SizeConstraint(0, 500)
     c3 = ExtensionConstraint("mp4")
     c4 = OrConstraint(c2, c3)
-    print(searchApi.search(rootDirectory, c4))
+    print(searchApi.search(rootDirectory, c1))
