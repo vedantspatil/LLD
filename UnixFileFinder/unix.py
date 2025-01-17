@@ -21,13 +21,13 @@ class Directory(FileNode):
 
     def addSubDirectory(self, *subdirectories):
         self.children.extend(subdirectories)
-        self.updatePaths()
+        self.updatePaths(subdirectories)
 
-    def updatePaths(self):
-        for dir in self.children:
+    def updatePaths(self, subdirectories):
+        for dir in subdirectories:
             dir.setFilePath(self.path)
             if dir.isDirectory:
-                dir.updatePaths()
+                dir.updatePaths(dir.children)
 
 class File(FileNode):
     def __init__(self, name, size=0):
