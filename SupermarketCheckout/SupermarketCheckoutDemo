@@ -1,0 +1,199 @@
+import java.util.ArrayList;
+import java.util.List;
+
+// ------------------------- DOMAIN CLASSES -------------------------
+class Product {
+    private String sku;        // e.g., "12345"
+    private String name;       // e.g., "Milk"
+    private double price;      // base price
+
+    public Product(String sku, String name, double price) {
+        this.sku = sku;
+        this.name = name;
+        this.price = price;
+    }
+
+    public String getSku() {
+        return sku;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+}
+
+class CartItem {
+    private Product product;
+    private int quantity;
+
+    public CartItem(Product product, int quantity) {
+        this.product = product;
+        this.quantity = quantity;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+}
+
+// ------------------------- PROMOTION CLASSES -------------------------
+abstract class Promotion {
+    private String promoName;
+
+    public Promotion(String promoName) {
+        this.promoName = promoName;
+    }
+
+    public String getPromoName() {
+        return promoName;
+    }
+
+    // Calculate how much discount to apply for these cart items
+    public abstract double applyDiscount(List<CartItem> items);
+}
+
+/**
+ * Example: "Buy One, Get One Free" for the given SKU.
+ */
+class BogoPromotion extends Promotion {
+    private String targetSku;
+
+    public BogoPromotion(String promoName, String targetSku) {
+        super(promoName);
+        this.targetSku = targetSku;
+    }
+
+    @Override
+    public double applyDiscount(List<CartItem> items) {
+        double discount = 0.0;
+        for (CartItem ci : items) {
+            if (ci.getProduct().getSku().equals(targetSku)) {
+                // For every 2 units, 1 is free
+                int pairs = ci.getQuantity() / 2;
+                double unitPrice = ci.getProduct().getPrice();
+                discount += pairs * unitPrice;
+            }
+        }
+        return discount;
+    }
+}
+
+/**
+ * Example: A percentage discount on the entire cart total.
+ */
+class PercentageDiscountPromotion extends Promotion {
+    private double percentage; // e.g., 10% = 0.10
+
+    public PercentageDiscountPromotion(String promoName, double percentage) {
+        super(promoName);
+        this.percentage = percentage;
+    }
+
+    @Override
+    public double applyDiscount(List<CartItem> items) {
+        double subtotal = 0.0;
+        for (CartItem ci : items) {
+            subtotal += ci.getProduct().getPrice() * ci.getQuantity();
+        }
+        return subtotal * percentage;
+    }
+}
+
+// ------------------------- CART & CHECKOUT -------------------------
+class Cart {
+    private List<CartItem> items = new ArrayList<>();
+
+    public void addItem(Product product, int quantity) {
+        items.add(new CartItem(product, quantity));
+    }
+
+    public List<CartItem> getItems() {
+        return items;
+    }
+}
+
+class PromotionEngine {
+    private List<Promotion> promotions = new ArrayList<>();
+
+    public void addPromotion(Promotion promo) {
+        promotions.add(promo);
+    }
+
+    public double calculateDiscount(List<CartItem> items) {
+        double totalDiscount = 0.0;
+        for (Promotion promo : promotions) {
+            totalDiscount += promo.applyDiscount(items);
+        }
+        return totalDiscount;
+    }
+}
+
+class Checkout {
+    private PromotionEngine promotionEngine;
+
+    public Checkout(PromotionEngine engine) {
+        this.promotionEngine = engine;
+    }
+
+    public double calculateTotal(Cart cart) {
+        // Calculate gross total
+        double subtotal = 0.0;
+        for (CartItem ci : cart.getItems()) {
+            subtotal += ci.getProduct().getPrice() * ci.getQuantity();
+        }
+
+        // Apply promotions
+        double discount = promotionEngine.calculateDiscount(cart.getItems());
+
+        return subtotal - discount;
+    }
+}
+
+// ------------------------- PAYMENT -------------------------
+enum PaymentMethod {
+    CASH, CREDIT_CARD, DIGITAL_WALLET
+}
+
+class PaymentService {
+    public boolean processPayment(double amount, PaymentMethod method) {
+        // A real implementation would integrate with payment gateways.
+        System.out.println("Processing payment of $" + amount + " via " + method);
+        return true; // assume success
+    }
+}
+
+// ------------------------- DEMO MAIN -------------------------
+public class SupermarketCheckoutDemo {
+    public static void main(String[] args) {
+        // Create some products
+        Product milk = new Product("SKU123", "Milk", 2.50);
+        Product bread = new Product("SKU456", "Bread", 3.00);
+
+        // Create a cart
+        Cart cart = new Cart();
+        cart.addItem(milk, 3);   // 3 milks
+        cart.addItem(bread, 1);  // 1 bread
+
+        // Setup promotion engine
+        PromotionEngine promoEngine = new PromotionEngine();
+        promoEngine.addPromotion(new BogoPromotion("BuyOneGetOneMilk", "SKU123"));  // BOGO on milk
+        promoEngine.addPromotion(new PercentageDiscountPromotion("TenPercentOff", 0.10)); // 10% off entire cart
+
+        // Checkout
+        Checkout checkout = new Checkout(promoEngine);
+        double total = checkout.calculateTotal(cart);
+        System.out.println("Cart total after promotions: $" + total);
+
+        // Payment
+        PaymentService paymentService = new PaymentService();
+        paymentService.processPayment(total, PaymentMethod.CREDIT_CARD);
+    }
+}

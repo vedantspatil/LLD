@@ -1,4 +1,7 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 
 // Base class representing a file or directory
 class FileNode {
@@ -124,7 +127,9 @@ public class Main {
         File file1 = new File("file1.txt", 500);
         File file2 = new File("file2.mp4", 200);
         Directory dir1 = new Directory("dir1");
-        
+        File file3 = new File("file3.mp4", 500);
+       
+        dir1.add(file3);
         root.add(file1);
         root.add(file2);
         root.add(dir1);
